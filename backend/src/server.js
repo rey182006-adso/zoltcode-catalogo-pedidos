@@ -10,6 +10,8 @@ const PORT = process.env.PORT || 3000;
 
 // Permite que Express entienda JSON en el cuerpo de las peticiones
 app.use(express.json());
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/auth', authRoutes);
 
 // Ruta de prueba simple, para confirmar que el servidor responde
 app.get('/', (req, res) => {
