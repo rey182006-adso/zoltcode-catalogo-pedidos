@@ -2,6 +2,7 @@
 // Logica de registro de usuarios
 
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 
 const SALT_ROUNDS = 10; // costo del hashing: mas alto = mas seguro pero mas lento
@@ -54,4 +55,57 @@ async function registrar(req, res) {
   }
 }
 
-module.exports = { registrar };
+async function login(req, res) {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
+    }
+
+    // Buscamos al usuario por email
+    const resultado = await pool.query(
+      'SELECT id, nombre, email, password_hash, rol FROM usuarios WHERE email = $1',
+      [email]
+    );
+
+    // Mensaje generico a proposito: no decimos si fallo el email o la contraseña,
+    // para no darle pistas a un atacante sobre que emails existen en el sistema
+    if (resultado.rows.length === 0) {
+      return res.status(401).json({ error: 'Credenciales invalidas' });
+    }
+
+    const usuario = resultado.rows[0];
+
+    // Comparamos la contraseña enviada con el hash guardado
+    const passwordValida = await bcrypt.compare(password, usuario.password_hash);
+
+    if (!passwordValida) {
+      return res.status(401).json({ error: 'Credenciales invalidas' });
+    }
+
+    // Generamos el token JWT con datos minimos (id y rol), nunca la contraseña
+    const token = jwt.sign(
+      { id: usuario.id, rol: usuario.rol },
+      process.env.JWT_SECRET,
+      { expiresIn: '2h' } // el token expira en 2 horas, por seguridad
+    );
+
+    res.json({
+      mensaje: 'Login exitoso',
+      token,
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email,
+        rol: usuario.rol,
+      },
+    });
+
+  } catch (error) {
+    console.error('Error en login:', error);
+    res.status(500).json({ error: 'Error interno al iniciar sesion' });
+  }
+}
+
+module.exports = { registrar, login };
