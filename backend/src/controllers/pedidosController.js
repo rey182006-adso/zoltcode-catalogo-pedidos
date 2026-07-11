@@ -75,11 +75,24 @@ async function crearPedido(req, res) {
     res.status(201).json({ mensaje: 'Pedido creado exitosamente', pedido });
 
   } catch (error) {
-    await client.query('ROLLBACK'); // si algo fallo, deshacemos todo
-    console.error('Error al crear pedido:', error);
-    const status = error.status || 500;
-    const mensaje = error.mensaje || 'Error interno al crear el pedido';
-    res.status(status).json({ error: mensaje });
+    await client.query('ROLLBACK');
+
+    // Log completo para vos como dev: siempre con el detalle real de Postgres
+    console.error('Error al crear pedido:', {
+      mensaje: error.message,
+      code: error.code,
+      detail: error.detail,
+    });
+
+    // Si el error ya viene con status/mensaje definidos por nuestras validaciones
+    // (producto no encontrado, stock insuficiente, etc), respetamos eso
+    if (error.status) {
+      return res.status(error.status).json({ error: error.mensaje });
+    }
+
+    // Cualquier otro error (Postgres, conexión, etc) es un fallo interno real:
+    // no exponemos detalles de la base de datos al cliente, por seguridad
+    res.status(500).json({ error: 'Error interno al crear el pedido' });
   } finally {
     client.release();
   }
