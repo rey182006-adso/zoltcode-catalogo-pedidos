@@ -2,11 +2,12 @@
 
 const express = require('express');
 const router = express.Router();
-const { crearPedido, misPedidos } = require('../controllers/pedidosController');
+const { crearPedido, misPedidos, obtenerPedido } = require('../controllers/pedidosController');
 const { verificarToken } = require('../middleware/authMiddleware');
 
 // Todas las rutas de pedidos requieren estar autenticado
 router.post('/', verificarToken, crearPedido);
 router.get('/', verificarToken, misPedidos);
+router.get('/:id', verificarToken, obtenerPedido);
 
 module.exports = router;

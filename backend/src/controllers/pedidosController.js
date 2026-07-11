@@ -24,8 +24,8 @@ async function crearPedido(req, res) {
     for (const item of items) {
       const { producto_id, cantidad } = item;
 
-      if (!producto_id || !cantidad || cantidad <= 0) {
-        throw { status: 400, mensaje: 'Cada item debe tener producto_id y cantidad valida' };
+      if (!producto_id || !cantidad || !Number.isInteger(cantidad) || cantidad <= 0) {
+        throw { status: 400, mensaje: 'Cada item debe tener producto_id y cantidad valida (numero entero mayor a 0)' };
       }
 
       const productoResult = await client.query(
@@ -110,9 +110,56 @@ async function misPedidos(req, res) {
 
     res.json({ pedidos: resultado.rows });
   } catch (error) {
-    console.error('Error al obtener pedidos:', error);
+    console.error('Error al obtener pedidos:', {
+      mensaje: error.message,
+      code: error.code,
+      detail: error.detail,
+    });
     res.status(500).json({ error: 'Error interno al obtener los pedidos' });
   }
 }
 
-module.exports = { crearPedido, misPedidos };
+// GET /api/pedidos/:id - detalle de un pedido especifico con sus items
+async function obtenerPedido(req, res) {
+  try {
+    const { id } = req.params;
+
+    const pedidoResult = await pool.query(
+      'SELECT id, usuario_id, estado_pago, total, fecha_creacion FROM pedidos WHERE id = $1',
+      [id]
+    );
+
+    if (pedidoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+
+    const pedido = pedidoResult.rows[0];
+
+    // Solo el dueño del pedido o un admin pueden ver el detalle
+    const esDueno = pedido.usuario_id === req.usuario.id;
+    const esAdmin = req.usuario.rol === 'admin';
+
+    if (!esDueno && !esAdmin) {
+      return res.status(403).json({ error: 'No tenes permiso para ver este pedido' });
+    }
+
+    const itemsResult = await pool.query(
+      `SELECT ip.producto_id, ip.cantidad, ip.precio_unitario, p.nombre
+       FROM items_pedido ip
+       JOIN productos p ON p.id = ip.producto_id
+       WHERE ip.pedido_id = $1`,
+      [id]
+    );
+
+    res.json({ pedido, items: itemsResult.rows });
+  } catch (error) {
+    console.error('Error al obtener pedido:', {
+      mensaje: error.message,
+      code: error.code,
+      detail: error.detail,
+    });
+    res.status(500).json({ error: 'Error interno al obtener el pedido' });
+  }
+}
+
+module.exports = { crearPedido, misPedidos, obtenerPedido };
