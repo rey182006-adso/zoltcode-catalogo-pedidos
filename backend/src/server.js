@@ -12,6 +12,8 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
+const productosRoutes = require('./routes/productosRoutes');
+app.use('/api/productos', productosRoutes);
 
 // Ruta de prueba simple, para confirmar que el servidor responde
 app.get('/', (req, res) => {

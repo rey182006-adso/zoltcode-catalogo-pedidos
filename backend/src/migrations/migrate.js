@@ -5,18 +5,25 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('../config/db');
 
+const archivos = [
+  '001_create_usuarios.sql',
+  '002_create_productos.sql',
+];
+
 async function runMigrations() {
   try {
-    const archivo = path.join(__dirname, '001_create_usuarios.sql');
-    const sql = fs.readFileSync(archivo, 'utf8');
+    for (const archivo of archivos) {
+      const rutaArchivo = path.join(__dirname, archivo);
+      const sql = fs.readFileSync(rutaArchivo, 'utf8');
 
-    console.log('Ejecutando migracion: 001_create_usuarios.sql');
-    await pool.query(sql);
-    console.log('Migracion completada: tabla usuarios lista');
+      console.log(`Ejecutando migracion: ${archivo}`);
+      await pool.query(sql);
+    }
+    console.log('Todas las migraciones se completaron correctamente');
   } catch (error) {
     console.error('Error al ejecutar la migracion:', error.message);
   } finally {
-    await pool.end(); // cerramos el pool porque este script termina aqui
+    await pool.end();
     process.exit();
   }
 }
