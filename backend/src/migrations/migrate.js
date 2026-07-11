@@ -8,6 +8,7 @@ const pool = require('../config/db');
 const archivos = [
   '001_create_usuarios.sql',
   '002_create_productos.sql',
+  '003_create_pedidos.sql',
 ];
 
 async function runMigrations() {
